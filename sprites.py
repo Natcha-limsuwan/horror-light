@@ -9,6 +9,7 @@ class Map:
     def __init__(self, game, layout):
         self.game = game
         self.layout = layout
+        self.doors = []
         self.create_map(layout)
 
     def create_map(self, layout):
@@ -25,8 +26,22 @@ class Map:
                     elif randint(0, 40) == 0:
                         Enemy(self.game, (x + TILESIZE // 2, y + TILESIZE // 2),
                               [self.game.all_sprites, self.game.enemies])
-                elif cell == 'k':
+                elif cell == 'D':
+                    self.doors.append(pygame.Rect(x, y, TILESIZE, TILESIZE))
+                # elif cell == 'K':
+                #     Key((x + TILESIZE // 2, y + TILESIZE // 2), [self.game.all_sprites, self.game.keys])
+        empty_spaces = []
+        for row_index, row in enumerate(self.layout):
+            for col_index, cell in enumerate(row):
+                if cell == '.':
+                    x = col_index * TILESIZE + TILESIZE // 2
+                    y = row_index * TILESIZE + TILESIZE // 2
+                    empty_spaces.append((x, y))
 
+        if empty_spaces:
+            from random import choice
+            key_pos = choice(empty_spaces)
+            Key(key_pos, [self.game.all_sprites, self.game.keys])
 
     def draw(self, screen):
         for row_index, row in enumerate(self.layout):
@@ -122,3 +137,41 @@ class Enemy(pygame.sprite.Sprite):
             pass
 
 
+class Key(pygame.sprite.Sprite):
+    def __init__(self, pos, groups):
+        super().__init__(groups)
+        self.image = pygame.image.load('key1.png').convert_alpha()
+        self.image = pygame.transform.scale(self.image, (40, 40))
+
+        self.rect = self.image.get_rect(center=pos)
+        self.rotation_angle = 0
+        self.rotation_speed = 1
+
+    def update(self):
+        self.rotation_angle = (self.rotation_angle + self.rotation_speed) % 360
+        original_image = pygame.image.load('key1.png').convert_alpha()
+        original_image = pygame.transform.scale(original_image, (40, 40))
+        self.image = pygame.transform.rotate(original_image, self.rotation_angle)
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+
+# class Door(pygame.sprite.Sprite):
+#     def __init__(self, pos, groups):
+#         super().__init__(groups)
+#
+#         # self.closed_image = pygame.image.load("door_closed.png").convert_alpha()
+#         # self.closed_image = pygame.transform.scale(self.closed_image, (TILESIZE, TILESIZE))
+#         #
+#         # self.open_image = pygame.image.load("door_open.png").convert_alpha()
+#         # self.open_image = pygame.transform.scale(self.open_image, (TILESIZE, TILESIZE))
+#
+#         # self.image = self.closed_image
+#         # self.rect = self.image.get_rect(topleft=pos)
+#         self.is_open = False
+#
+#     def update(self):
+#         # อัพเดทภาพตามสถานะกุญแจ
+#         if self.is_open:
+#             self.image = self.open_image
+#         else:
+#             self.image = self.closed_image

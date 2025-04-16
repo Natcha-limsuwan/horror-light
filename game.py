@@ -56,6 +56,9 @@ class Game:
         self.enemy_spawn_timer = 0
         self.enemy_spawn_interval = 5
         self.max_enemies = self.level + 2
+        self.keys = pygame.sprite.Group()
+        self.doors = pygame.sprite.Group()
+        self.has_key = False  # สถานะกุญแจ
         self.load_start_screen()
         self.current_enemies = 0
         self.last_spawn_time = time.time()
@@ -146,6 +149,9 @@ class Game:
         self.start_time = time.time()
         self.enemy_speed = ENEMY_SPEED + (self.level - 1) * 0.1
 
+        # Reset key
+        self.has_key = False
+
     def spawn_enemy(self):
         if self.current_enemies < self.max_enemies:
             from random import choice
@@ -180,6 +186,16 @@ class Game:
     def update(self):
         self.all_sprites.update()
 
+        for door_rect in self.map.doors:
+            if self.player.rect.colliderect(door_rect):
+                if self.has_key:
+                    self.level += 1
+                    if self.level > 3:
+                        self.save_game_data('win')
+                        self.game_over("Victory!")
+                    else:
+                        self.new_level()
+
         current_time = time.time()
         elapsed_time = current_time - self.game_start_time
 
@@ -194,13 +210,13 @@ class Game:
                 self.score += 5
                 enemy.kill()
 
-        if not self.gems:
-            if self.level < 3:
-                self.level += 1
-                self.new_level()
-            else:
-                self.save_game_data('win')
-                self.game_over('Victory!')
+        # if not self.gems:
+        #     if self.level < 3:
+        #         self.level += 1
+        #         self.new_level()
+        #     else:
+        #         self.save_game_data('win')
+        #         self.game_over('Victory!')
 
         # Time check
         level_elapsed_time = time.time() - self.start_time
@@ -251,24 +267,29 @@ class Game:
         pygame.display.flip()
 
     def draw_ui(self):
-        font = pygame.font.Font(None, 36)
-
+        # font = pygame.font.Font(None, 36)
+        font = pygame.font.Font('roundfont.ttf', 30)
         # Score
-        score_text = font.render(f"Score: {self.score}", True, WHITE)
+        score_text = font.render(f"Score : {self.score}", True, WHITE)
         self.screen.blit(score_text, (10, 10))
 
         # Time
         time_left = max(0, int(self.time_limit - (time.time() - self.start_time)))
-        time_text = font.render(f"Time: {time_left}", True, WHITE)
+        time_text = font.render(f"Time : {time_left}", True, WHITE)
         self.screen.blit(time_text, (10, 50))
 
         # Flashlight Status
         flashlight_status = "ON" if self.player.flashlight_on else "OFF"
-        flashlight_text = font.render(f"Flashlight: {flashlight_status}", True, WHITE)
+        flashlight_text = font.render(f"Flashlight : {flashlight_status}", True, WHITE)
         self.screen.blit(flashlight_text, (10, 90))
 
-        enemy_count = font.render(f"Enemies: {self.current_enemies}/{self.max_enemies}", True, WHITE)
-        self.screen.blit(enemy_count, (10, 130))
+        # แสดงสถานะกุญแจ
+        key_font = pygame.font.Font('roundfont.ttf', 25)
+        if self.has_key:
+            key_text = key_font.render("Key : YES", True, (0, 255, 0))
+        else:
+            key_text = key_font.render("Key : NO", True, (255, 0, 0))
+        self.screen.blit(key_text, (WIDTH - 125, 10))
 
     def draw_flashlight(self):
         darkness = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)

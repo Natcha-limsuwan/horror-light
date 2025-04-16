@@ -116,6 +116,23 @@ class Player(pygame.sprite.Sprite):
             self.game.save_game_data('killed_by_enemy')
             self.game.game_over('You were caught!')
 
+    def collect_key(self):
+        keys_collected = pygame.sprite.spritecollide(self, self.game.keys, True)
+        if keys_collected:
+            self.game.has_key = True
+            # สามารถเพิ่มเสียงหรือเอฟเฟกต์ที่นี่
+
+    def check_door(self):
+        if pygame.sprite.spritecollideany(self, self.game.doors):
+            if self.game.has_key:  # ตรวจสอบว่ามีกุญแจ
+                if self.game.level < 3:
+                    self.game.level += 1
+                    self.game.has_key = False  # รีเซ็ตสถานะกุญแจ
+                    self.game.new_level()
+                else:
+                    self.game.save_game_data('win')
+                    self.game.game_over('Victory!')
+
     def update(self):
         if self.flashlight_cooldown > 0:
             self.flashlight_cooldown -= 1
@@ -125,3 +142,5 @@ class Player(pygame.sprite.Sprite):
         self.collect_gems()
         self.flashlight_kill()
         self.check_collision_with_enemy()
+        self.collect_key()
+        self.check_door()
