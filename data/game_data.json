@@ -1,7 +1,30 @@
-{
-    "player_name": "a",
-    "levels_completed": 2,
-    "total_score": 20,
-    "game_result": "killed_by_enemy",
-    "date_played": "2025-04-16 12:35:37"
-}
+[
+    {
+        "player_name": "a",
+        "levels_completed": 2,
+        "total_score": 60,
+        "game_result": "quit",
+        "date_played": "2025-04-16 14:26:55"
+    },
+    {
+        "player_name": "a",
+        "levels_completed": 2,
+        "total_score": 60,
+        "game_result": "killed_by_enemy",
+        "date_played": "2025-04-16 14:35:04"
+    },
+    {
+        "player_name": "aaaa",
+        "levels_completed": 1,
+        "total_score": 0,
+        "game_result": "killed_by_enemy",
+        "date_played": "2025-04-16 14:35:21"
+    },
+    {
+        "player_name": "aom",
+        "levels_completed": 1,
+        "total_score": 20,
+        "game_result": "killed_by_enemy",
+        "date_played": "2025-04-16 14:36:02"
+    }
+]

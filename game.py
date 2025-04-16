@@ -81,6 +81,17 @@ class Game:
         text = ''
         done = False
 
+        # ปุ่ม Start และ Top 3
+        start_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 80, 200, 50)
+        top_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 150, 200, 50)
+        button_font = pygame.font.Font('roundfont.ttf', 30)
+
+        blue = (0, 100, 200)
+        blue_hover = (0, 130, 255)
+
+        green = (0, 150, 100)
+        green_hover = (0, 200, 150)
+
         while not done:
             current_time = pygame.time.get_ticks()
 
@@ -94,6 +105,15 @@ class Game:
                     else:
                         active = False
                     color = color_active if active else color_inactive
+
+                    if start_button.collidepoint(event.pos):
+                        if text.strip():
+                            self.player_name = text
+                            done = True
+
+                    if top_button.collidepoint(event.pos):
+                        self.show_top_3()
+
                 if event.type == pygame.KEYDOWN:
                     if active:
                         if event.key == pygame.K_RETURN:
@@ -122,12 +142,87 @@ class Game:
             name_rect.y += 3
             self.screen.blit(name_surface, name_rect)
 
+            mouse_pos = pygame.mouse.get_pos()
+
+            # เช็กเม้า
+            start_color = blue_hover if start_button.collidepoint(mouse_pos) else blue
+            top_color = green_hover if top_button.collidepoint(mouse_pos) else green
+
+            pygame.draw.rect(self.screen, start_color, start_button)
+            pygame.draw.rect(self.screen, top_color, top_button)
+
             pygame.draw.rect(self.screen, color, input_box, 2)
+
+            start_text = button_font.render("START", True, WHITE)
+            start_text_rect = start_text.get_rect(center=start_button.center)
+            self.screen.blit(start_text, start_text_rect)
+
+            top_text = button_font.render("RANK", True, WHITE)
+            top_text_rect = top_text.get_rect(center=top_button.center)
+            self.screen.blit(top_text, top_text_rect)
 
             pygame.display.flip()
             self.clock.tick(30)
 
         self.new_level()
+
+    def show_top_3(self):
+        try:
+            with open('data/game_data.json', 'r') as f:
+                data = json.load(f)
+        except:
+            print("No game data found.")
+            return
+
+        if isinstance(data, dict):
+            data = [data]
+
+        top_players = sorted(data, key=lambda x: x.get('total_score', 0), reverse=True)[:3]
+
+        font = pygame.font.Font('roundfont.ttf', 40)
+        button_font = pygame.font.Font('roundfont.ttf', 30)
+
+        # เตรียมปุ่ม Back
+        back_button = pygame.Rect(WIDTH // 2 - 75, HEIGHT - 100, 150, 50)
+        blue = (0, 100, 200)
+        blue_hover = (0, 130, 255)
+
+        running = True
+        while running:
+            self.screen.fill((0, 0, 50))
+
+            # วาด Title
+            title = font.render("Top 3 Players", True, WHITE)
+            title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 160))
+            self.screen.blit(title, title_rect)
+
+            # วาดรายชื่อ
+            total_height = len(top_players) * 60
+            start_y = (HEIGHT // 2) - (total_height // 2)
+            for i, player in enumerate(top_players):
+                line = f"{i + 1}. {player['player_name']} - {player['total_score']} pts"
+                text_surface = font.render(line, True, (255, 255, 100))
+                rect = text_surface.get_rect(center=(WIDTH // 2, start_y + i * 60))
+                self.screen.blit(text_surface, rect)
+
+            # วาดปุ่ม Back
+            mouse_pos = pygame.mouse.get_pos()
+            back_color = blue_hover if back_button.collidepoint(mouse_pos) else blue
+            pygame.draw.rect(self.screen, back_color, back_button)
+            back_text = button_font.render("BACK", True, WHITE)
+            back_text_rect = back_text.get_rect(center=back_button.center)
+            self.screen.blit(back_text, back_text_rect)
+
+            pygame.display.flip()
+
+            # รอคลิกที่ปุ่ม
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if back_button.collidepoint(event.pos):
+                        running = False
 
     def new_level(self):
         self.current_enemies = 0
@@ -335,18 +430,32 @@ class Game:
         sys.exit()
 
     def save_game_data(self, result):
-        data = {
+        new_entry = {
             "player_name": self.player_name,
             "levels_completed": self.level,
             "total_score": self.score,
             "game_result": result,
             "date_played": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         }
+
+        file_path = 'data/game_data.json'
+
+        # อ่านข้อมูลเก่า
         try:
-            with open('data/game_data.json', 'w') as f:
-                json.dump(data, f, indent=4)
-        except Exception as e:
-            print(f"Error saving game data: {e}")
+            with open(file_path, 'r') as f:
+                existing_data = json.load(f)
+                if not isinstance(existing_data, list):
+                    existing_data = [existing_data]
+        except (FileNotFoundError, json.JSONDecodeError):
+            existing_data = []
+
+        # เพิ่มข้อมูลใหม่
+        existing_data.append(new_entry)
+
+        # บันทึกทั้งหมด
+        with open(file_path, 'w') as f:
+            json.dump(existing_data, f, indent=4)
+
 
 if __name__ == "__main__":
     game = Game()
