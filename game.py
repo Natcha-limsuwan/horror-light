@@ -4,10 +4,13 @@ import time
 import json
 import math
 from settings import *
+import csv
+import os
 from map import level_maps
 from sprites import *
 from player import Player
 from PIL import Image
+from game_manager import GameManager
 
 
 def load_gif_frames(filename):
@@ -52,9 +55,9 @@ class Game:
         self.player_name = ""
         self.time_limit = TIME_LIMIT
         self.enemy_speed = ENEMY_SPEED
-        self.enemy_spawn_delay = 5
+        self.enemy_spawn_delay = 3
         self.enemy_spawn_timer = 0
-        self.enemy_spawn_interval = 5
+        self.enemy_spawn_interval = 3
         self.max_enemies = self.level + 2
         self.keys = pygame.sprite.Group()
         self.doors = pygame.sprite.Group()
@@ -109,6 +112,8 @@ class Game:
                     if start_button.collidepoint(event.pos):
                         if text.strip():
                             self.player_name = text
+                            self.manager = GameManager(self.player_name)
+
                             done = True
 
                     if top_button.collidepoint(event.pos):
@@ -118,6 +123,7 @@ class Game:
                     if active:
                         if event.key == pygame.K_RETURN:
                             self.player_name = text
+                            self.manager = GameManager(self.player_name)
                             done = True
                         elif event.key == pygame.K_BACKSPACE:
                             text = text[:-1]
@@ -167,22 +173,30 @@ class Game:
         self.new_level()
 
     def show_top_3(self):
-        try:
-            with open('data/game_data.json', 'r') as f:
-                data = json.load(f)
-        except:
-            print("No game data found.")
+        import csv
+
+        file_path = 'data/game_data.csv'
+
+        # Check if CSV exists
+        if not os.path.isfile(file_path):
+            print("No CSV game data found.")
             return
 
-        if isinstance(data, dict):
-            data = [data]
+        # Load data from CSV
+        with open(file_path, 'r', newline='') as f:
+            reader = csv.DictReader(f)
+            data = list(reader)
 
-        top_players = sorted(data, key=lambda x: x.get('total_score', 0), reverse=True)[:3]
+        if not data:
+            print("CSV file is empty.")
+            return
+
+        # Sort top players by total_score
+        top_players = sorted(data, key=lambda x: int(x.get('Total Score', 0)), reverse=True)[:3]
 
         font = pygame.font.Font('roundfont.ttf', 40)
         button_font = pygame.font.Font('roundfont.ttf', 30)
 
-        # เตรียมปุ่ม Back
         back_button = pygame.Rect(WIDTH // 2 - 75, HEIGHT - 100, 150, 50)
         blue = (0, 100, 200)
         blue_hover = (0, 130, 255)
@@ -191,21 +205,21 @@ class Game:
         while running:
             self.screen.fill((0, 0, 50))
 
-            # วาด Title
+            # Title
             title = font.render("Top 3 Players", True, WHITE)
             title_rect = title.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 160))
             self.screen.blit(title, title_rect)
 
-            # วาดรายชื่อ
+            # Player scores
             total_height = len(top_players) * 60
             start_y = (HEIGHT // 2) - (total_height // 2)
             for i, player in enumerate(top_players):
-                line = f"{i + 1}. {player['player_name']} - {player['total_score']} pts"
+                line = f"{i + 1}. {player['player_name']} - {player['Total Score']} pts"
                 text_surface = font.render(line, True, (255, 255, 100))
                 rect = text_surface.get_rect(center=(WIDTH // 2, start_y + i * 60))
                 self.screen.blit(text_surface, rect)
 
-            # วาดปุ่ม Back
+            # Back button
             mouse_pos = pygame.mouse.get_pos()
             back_color = blue_hover if back_button.collidepoint(mouse_pos) else blue
             pygame.draw.rect(self.screen, back_color, back_button)
@@ -215,7 +229,7 @@ class Game:
 
             pygame.display.flip()
 
-            # รอคลิกที่ปุ่ม
+            # Handle input
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -238,14 +252,13 @@ class Game:
         self.map = Map(self, level_maps[self.level])
         self.player = Player(self, (WIDTH // 2, HEIGHT // 2), [self.all_sprites])
 
-        # Reset timers
         self.game_start_time = time.time()
         self.enemy_spawn_timer = 0
         self.start_time = time.time()
         self.enemy_speed = ENEMY_SPEED + (self.level - 1) * 0.1
-
-        # Reset key
         self.has_key = False
+
+        self.manager.start_level()  # ✅ ต้องมีบรรทัดนี้!
 
     def spawn_enemy(self):
         if self.current_enemies < self.max_enemies:
@@ -271,8 +284,14 @@ class Game:
                 self.save_game_data('quit')
                 pygame.quit()
                 sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.save_game_data('quit')
+                    pygame.quit()
+                    sys.exit()
 
     def run(self):
+        self.game_start_time = time.time()  # เริ่มจับเวลาตรงนี้ แทนใน new_level()
         while True:
             self.events()
             self.update()
@@ -284,18 +303,22 @@ class Game:
         for door_rect in self.map.doors:
             if self.player.rect.colliderect(door_rect):
                 if self.has_key:
-                    self.level += 1
-                    if self.level > 3:
-                        self.save_game_data('win')
+                    self.manager.end_level(self.level)  # จบเวลาในด่านนี้
+
+                    if self.level >= 3:
+                        self.manager.save_stats_final("win", self.score, self.level)
+                        self.save_game_data("win")
                         self.game_over("Victory!")
                     else:
+                        self.level += 1
                         self.new_level()
 
         current_time = time.time()
         elapsed_time = current_time - self.game_start_time
 
+        # ✅ เริ่ม spawn ผีหลังผ่านไป 1 วินาที และ spawn ตาม interval ทีละตัว
         if elapsed_time > self.enemy_spawn_delay:
-            if current_time - self.last_spawn_time > self.enemy_spawn_interval:
+            if current_time - self.last_spawn_time > self.enemy_spawn_interval and self.current_enemies < self.max_enemies:
                 self.spawn_enemy()
                 self.last_spawn_time = current_time
 
@@ -303,21 +326,16 @@ class Game:
             if hasattr(enemy, 'is_dead') and enemy.is_dead:
                 self.current_enemies -= 1
                 self.score += 5
+                self.manager.add_ghost_defeat()
                 enemy.kill()
 
-        # if not self.gems:
-        #     if self.level < 3:
-        #         self.level += 1
-        #         self.new_level()
-        #     else:
-        #         self.save_game_data('win')
-        #         self.game_over('Victory!')
-
-        # Time check
+        # ตรวจสอบเวลาในด่าน
         level_elapsed_time = time.time() - self.start_time
         if level_elapsed_time > self.time_limit:
-            self.save_game_data('timeout')
-            self.game_over('Time Out!')
+            self.manager.end_level(self.level)
+            self.manager.save_stats_final("timeout", self.score, self.level)
+            self.save_game_data("timeout")
+            self.game_over("Time Out!")
 
     def draw(self):
         self.map.draw(self.screen)
@@ -429,32 +447,39 @@ class Game:
         pygame.quit()
         sys.exit()
 
+    import csv
+    import os
+
     def save_game_data(self, result):
+        # Use clearer headers for better readability
         new_entry = {
-            "player_name": self.player_name,
-            "levels_completed": self.level,
-            "total_score": self.score,
-            "game_result": result,
-            "date_played": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            "Player Name": self.player_name,
+            "Levels Completed": self.level,
+            "Total Score": self.score,
+            "Game Result": result,
+            "Ghosts Defeated": self.manager.ghosts_defeated,
         }
 
-        file_path = 'data/game_data.json'
+        # Add level time headers like "Level 1 Time (sec)"
+        for level_num in range(1, self.level + 1):
+            key = f"Level {level_num} Time (sec)"
+            time_value = self.manager.level_times.get(str(level_num), "")
+            new_entry[key] = time_value
 
-        # อ่านข้อมูลเก่า
-        try:
-            with open(file_path, 'r') as f:
-                existing_data = json.load(f)
-                if not isinstance(existing_data, list):
-                    existing_data = [existing_data]
-        except (FileNotFoundError, json.JSONDecodeError):
-            existing_data = []
+        file_path = 'data/game_data.csv'
+        os.makedirs("data", exist_ok=True)
+        file_exists = os.path.isfile(file_path)
 
-        # เพิ่มข้อมูลใหม่
-        existing_data.append(new_entry)
+        # Ensure all columns are consistently ordered
+        fieldnames = list(new_entry.keys())
 
-        # บันทึกทั้งหมด
-        with open(file_path, 'w') as f:
-            json.dump(existing_data, f, indent=4)
+        with open(file_path, 'a', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+
+            if not file_exists:
+                writer.writeheader()
+
+            writer.writerow(new_entry)
 
 
 if __name__ == "__main__":

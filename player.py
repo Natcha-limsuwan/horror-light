@@ -56,7 +56,7 @@ class Player(pygame.sprite.Sprite):
             self.image = self.direction_images[self.current_direction]
 
         for event in self.game.events_to_process:
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_a:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_q:
                 self.flashlight_on = not self.flashlight_on
 
     def move(self):
@@ -105,6 +105,7 @@ class Player(pygame.sprite.Sprite):
             enemy_angle = math.atan2(-to_enemy.y, to_enemy.x)
             if left_angle <= enemy_angle <= right_angle:
                 enemy.kill()
+                self.game.manager.add_ghost_defeat()
                 self.game.score += 10
 
     def collect_gems(self):

@@ -101,17 +101,50 @@ class Enemy(pygame.sprite.Sprite):
         self.is_dead = False
         self.speed = ENEMY_SPEED
 
+    # def update(self):
+    #     if self.health <= 0:
+    #         self.is_dead = True
+    #         self.kill()
+    #
+    #     if self.game.player.flashlight_on:
+    #         # คำนวณว่าผีอยู่ในแสง
+    #         player_center = self.game.player.rect.center
+    #         direction = self.game.player.facing_direction
+    #         beam_length = 200
+    #         cone_width = 40
+    #         to_enemy = pygame.math.Vector2(
+    #             self.rect.centerx - player_center[0],
+    #             self.rect.centery - player_center[1]
+    #         )
+    #
+    #         if to_enemy.length() < beam_length:
+    #             angle = math.degrees(math.atan2(-direction.y, direction.x) - math.atan2(-to_enemy.y, to_enemy.x))
+    #             if abs(angle) < cone_width / 2:
+    #                 self.is_active = True
+    #
+    #     if self.game.player.flashlight_on:
+    #         direction = pygame.math.Vector2(self.game.player.rect.center) - pygame.math.Vector2(self.rect.center)
+    #         if direction.length() != 0:
+    #             direction = direction.normalize()
+    #
+    #         else:
+    #             direction = pygame.math.Vector2(0, 0)
+    #
+    #         move_vector = direction * self.game.enemy_speed
+    #         self.rect.center += move_vector
+    #
+    #     else:
+    #         pass
     def update(self):
-        if self.health <= 0:
-            self.is_dead = True
-            self.kill()
+        if self.is_dead:
+            return
 
         if self.game.player.flashlight_on:
-            # คำนวณว่าผีอยู่ในแสง
             player_center = self.game.player.rect.center
             direction = self.game.player.facing_direction
             beam_length = 200
             cone_width = 40
+
             to_enemy = pygame.math.Vector2(
                 self.rect.centerx - player_center[0],
                 self.rect.centery - player_center[1]
@@ -119,22 +152,20 @@ class Enemy(pygame.sprite.Sprite):
 
             if to_enemy.length() < beam_length:
                 angle = math.degrees(math.atan2(-direction.y, direction.x) - math.atan2(-to_enemy.y, to_enemy.x))
+                angle = (angle + 180) % 360 - 180  # Normalize angle to [-180, 180]
+
                 if abs(angle) < cone_width / 2:
-                    self.is_active = True
+                    self.is_dead = True
+                    self.kill()
+                    self.game.manager.add_ghost_defeat()  # ✅ นับศัตรูตาย
+                    return
 
         if self.game.player.flashlight_on:
             direction = pygame.math.Vector2(self.game.player.rect.center) - pygame.math.Vector2(self.rect.center)
             if direction.length() != 0:
                 direction = direction.normalize()
-
-            else:
-                direction = pygame.math.Vector2(0, 0)
-
-            move_vector = direction * self.game.enemy_speed
-            self.rect.center += move_vector
-
-        else:
-            pass
+                move_vector = direction * self.game.enemy_speed
+                self.rect.center += move_vector
 
 
 class Key(pygame.sprite.Sprite):
@@ -153,6 +184,29 @@ class Key(pygame.sprite.Sprite):
         original_image = pygame.transform.scale(original_image, (40, 40))
         self.image = pygame.transform.rotate(original_image, self.rotation_angle)
         self.rect = self.image.get_rect(center=self.rect.center)
+
+
+# class Door(pygame.sprite.Sprite):
+#     def __init__(self, pos, groups):
+#         super().__init__(groups)
+#
+#         # self.closed_image = pygame.image.load("door_closed.png").convert_alpha()
+#         # self.closed_image = pygame.transform.scale(self.closed_image, (TILESIZE, TILESIZE))
+#         #
+#         # self.open_image = pygame.image.load("door_open.png").convert_alpha()
+#         # self.open_image = pygame.transform.scale(self.open_image, (TILESIZE, TILESIZE))
+#
+#         # self.image = self.closed_image
+#         # self.rect = self.image.get_rect(topleft=pos)
+#         self.is_open = False
+#
+#     def update(self):
+#         # อัพเดทภาพตามสถานะกุญแจ
+#         if self.is_open:
+#             self.image = self.open_image
+#         else:
+#             self.image = self.closed_image
+
 
 
 # class Door(pygame.sprite.Sprite):

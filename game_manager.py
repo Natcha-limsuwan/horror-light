@@ -1,7 +1,8 @@
-
 import time
 import json
 import os
+import csv
+
 
 class GameManager:
     def __init__(self, player_name="Unknown"):
@@ -17,6 +18,7 @@ class GameManager:
         self.deaths = 0
         self.rooms_cleared = 0
         self.keys_collected = 0
+        self.level_times = {}
 
     def update_flashlight_state(self, is_on):
         current_time = time.time()
@@ -41,26 +43,46 @@ class GameManager:
     def add_key_collected(self):
         self.keys_collected += 1
 
-    def end_game(self):
+    def start_level(self):
+        self.level_start_time = time.time()
+
+    def end_level(self, level):
+        elapsed = round(time.time() - self.level_start_time, 2)
+        self.level_times[str(level)] = elapsed
+
+    def save_stats_final(self, game_result, total_score, levels_completed):
         if self.flashlight_on_start:
             self.flashlight_time += time.time() - self.flashlight_on_start
             self.flashlight_on_start = None
         self.time_elapsed = time.time() - self.start_time
-        self.save_stats()
 
-    def save_stats(self):
-        stats = {
-            "player": self.player_name,
-            "time_elapsed": round(self.time_elapsed, 2),
-            "flashlight_usage": round(self.flashlight_time, 2),
+        # ✅ Flatten level_times for CSV
+        level_time_fields = [f"level{i + 1}_time" for i in range(levels_completed)]
+        level_time_values = [self.level_times.get(str(i + 1), "") for i in range(levels_completed)]
+
+        row = {
+            "player_name": self.player_name,
+            "levels_completed": levels_completed,
+            "total_score": total_score,
+            "game_result": game_result,
             "ghosts_defeated": self.ghosts_defeated,
-            "gems_collected": self.gems_collected,
-            "deaths": self.deaths,
-            "rooms_cleared": self.rooms_cleared,
-            "keys_collected": self.keys_collected
+            "date_played": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         }
 
+        for i, t in enumerate(level_time_values):
+            row[f"level{i + 1}_time"] = t
+
+        # ✅ File path
         os.makedirs("data", exist_ok=True)
-        filename = f"data/{self.player_name}_stats.json"
-        with open(filename, "w") as f:
-            json.dump(stats, f, indent=4)
+        filename = "data/game_data.csv"
+
+        file_exists = os.path.isfile(filename)
+
+        # ✅ Write to CSV
+        with open(filename, "a", newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=row.keys())
+
+            if not file_exists:
+                writer.writeheader()
+
+            writer.writerow(row)
