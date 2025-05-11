@@ -1,5 +1,4 @@
 import time
-import json
 import os
 import csv
 
@@ -19,6 +18,7 @@ class GameManager:
         self.rooms_cleared = 0
         self.keys_collected = 0
         self.level_times = {}
+        self.level_start_time = time.time()
 
     def update_flashlight_state(self, is_on):
         current_time = time.time()
@@ -51,38 +51,66 @@ class GameManager:
         self.level_times[str(level)] = elapsed
 
     def save_stats_final(self, game_result, total_score, levels_completed):
+        # Finalize all stats
         if self.flashlight_on_start:
             self.flashlight_time += time.time() - self.flashlight_on_start
             self.flashlight_on_start = None
-        self.time_elapsed = time.time() - self.start_time
 
-        # ✅ Flatten level_times for CSV
-        level_time_fields = [f"level{i + 1}_time" for i in range(levels_completed)]
-        level_time_values = [self.level_times.get(str(i + 1), "") for i in range(levels_completed)]
-
-        row = {
-            "player_name": self.player_name,
-            "levels_completed": levels_completed,
-            "total_score": total_score,
-            "game_result": game_result,
-            "ghosts_defeated": self.ghosts_defeated,
-            "date_played": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        # Initialize stats with basic information
+        stats = {
+            "Player Name": self.player_name,
+            "Levels Completed": levels_completed,
+            "Total Score": total_score,
+            "Game Result": game_result,
+            "Ghosts Defeated": self.ghosts_defeated
         }
 
-        for i, t in enumerate(level_time_values):
-            row[f"level{i + 1}_time"] = t
+        # Calculate total time from completed levels only
+        total_time = 0.0
+        for level in range(1, levels_completed + 1):
+            level_time = self.level_times.get(str(level), 0)
+            stats[f"Level {level} Time"] = level_time
+            if level_time != "N/A":
+                total_time += float(level_time)
 
-        # ✅ File path
+        # Add the calculated total time
+        stats["Total Time"] = round(total_time, 2)
+
+        # Fill in N/A for levels not completed
+        for level in range(levels_completed + 1, 4):
+            stats[f"Level {level} Time"] = "N/A"
+
+        self.save_to_csv(stats)
+
+    def save_to_csv(self, stats):
+        file_path = 'data/game_data.csv'
         os.makedirs("data", exist_ok=True)
-        filename = "data/game_data.csv"
 
-        file_exists = os.path.isfile(filename)
+        # Define all possible fieldnames
+        fieldnames = [
+            "Player Name",
+            "Levels Completed",
+            "Total Score",
+            "Game Result",
+            "Ghosts Defeated",
+            "Total Time",
+            "Level 1 Time",
+            "Level 2 Time",
+            "Level 3 Time"
+        ]
 
-        # ✅ Write to CSV
-        with open(filename, "a", newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=row.keys())
+        # Check if file exists to determine if we need headers
+        file_exists = os.path.isfile(file_path)
+
+        with open(file_path, 'a', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
 
             if not file_exists:
                 writer.writeheader()
 
-            writer.writerow(row)
+            # Ensure all fields are present in stats
+            for field in fieldnames:
+                if field not in stats:
+                    stats[field] = "N/A"
+
+            writer.writerow(stats)

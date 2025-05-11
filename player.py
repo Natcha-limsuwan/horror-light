@@ -1,8 +1,6 @@
 import pygame
 from settings import *
-from sprites import Enemy, Gem
 import math
-import os
 
 
 class Player(pygame.sprite.Sprite):
@@ -114,7 +112,7 @@ class Player(pygame.sprite.Sprite):
 
     def check_collision_with_enemy(self):
         if pygame.sprite.spritecollideany(self, self.game.enemies):
-            self.game.save_game_data('killed_by_enemy')
+            self.game.manager.save_stats_final("killed_by_enemy", self.game.score, self.game.level)
             self.game.game_over('You were caught!')
 
     def collect_key(self):

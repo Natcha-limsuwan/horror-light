@@ -1,5 +1,4 @@
-from settings import *
-import pygame
+
 
 level_maps = {
     1: [
