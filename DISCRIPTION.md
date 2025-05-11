@@ -2,7 +2,7 @@
 
 ## Descend into Darkness: A Survival Horror Game
 
-[![Gameplay Preview](link_to_your_project_demo_video_here)]
+[![Gameplay Preview](https://youtu.be/p6T8DUu49OE)]
 
 **Horror Light** is a Python-based survival horror game developed with the Pygame library. Navigate perilous, dimly lit environments armed only with your wits and a flashlight. Avoid horrifying enemies, uncover secrets, collect vital items, and track your struggle for survival through detailed statistics.
 
